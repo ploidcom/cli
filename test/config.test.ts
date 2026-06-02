@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_BASE_URL, resolveConfig } from "../src/config.js";
+import { DEFAULT_BASE_URL, clearCredentials, resolveConfig, saveCredentials } from "../src/config.js";
 
 const ENV_KEYS = ["PLOID_API_KEY", "PLOID_API_BASE_URL", "XDG_CONFIG_HOME"] as const;
 let saved: Record<string, string | undefined> = {};
@@ -54,5 +54,40 @@ describe("resolveConfig", () => {
   it("strips trailing slashes from the base URL", () => {
     process.env.PLOID_API_BASE_URL = "https://api.ploid.com/";
     expect(resolveConfig().baseUrl).toBe("https://api.ploid.com");
+  });
+});
+
+describe("saveCredentials / clearCredentials", () => {
+  it("writes the key and makes it resolvable, then clears it", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ploid-cfg-save-"));
+    process.env.XDG_CONFIG_HOME = dir;
+    try {
+      const path = saveCredentials("ploid_live_abc");
+      expect(resolveConfig().apiKey).toBe("ploid_live_abc");
+      // Default base URL is not persisted.
+      const written = JSON.parse(readFileSync(path, "utf8"));
+      expect(written.api_key).toBe("ploid_live_abc");
+      expect(written.base_url).toBeUndefined();
+
+      expect(clearCredentials()).toBe(true);
+      expect(resolveConfig().apiKey).toBeUndefined();
+      // Clearing again is a no-op.
+      expect(clearCredentials()).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("persists a non-default base URL alongside the key", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ploid-cfg-save2-"));
+    process.env.XDG_CONFIG_HOME = dir;
+    try {
+      saveCredentials("ploid_live_xyz", "https://staging.api.ploid.com");
+      const config = resolveConfig();
+      expect(config.apiKey).toBe("ploid_live_xyz");
+      expect(config.baseUrl).toBe("https://staging.api.ploid.com");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

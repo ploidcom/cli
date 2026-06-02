@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { buildContext } from "../context.js";
 import { printResult } from "../output.js";
 
-interface CreditSummary {
+export interface CreditSummary {
   available_credits?: number;
   available_balance_usd?: number;
   api_key_budget?: {
@@ -11,7 +11,7 @@ interface CreditSummary {
   } | null;
 }
 
-function formatCredits(data: CreditSummary): string {
+export function formatCredits(data: CreditSummary): string {
   const lines: string[] = [];
   if (data.available_credits !== undefined) {
     const usd = data.available_balance_usd ?? data.available_credits / 100;
@@ -48,22 +48,5 @@ export function registerAccountCommands(program: Command): void {
       const ctx = buildContext(command);
       const res = await ctx.client.get("/account/usage");
       printResult(res, ctx.output);
-    });
-
-  // `ploid auth check` is a friendly alias that validates the key by hitting
-  // the credits endpoint and printing the balance.
-  program
-    .command("auth")
-    .description("Authentication helpers")
-    .command("check")
-    .description("Verify the configured API key works")
-    .action(async (_opts, command: Command) => {
-      const ctx = buildContext(command);
-      const res = await ctx.client.get<CreditSummary>("/account/credits");
-      if (ctx.output.json) {
-        printResult(res, ctx.output);
-        return;
-      }
-      process.stdout.write(`API key OK.\n${formatCredits(res.data)}\n`);
     });
 }

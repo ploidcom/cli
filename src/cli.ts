@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { registerAuthCommands } from "./commands/auth.js";
 import { registerAccountCommands } from "./commands/account.js";
 import { registerPeopleCommands } from "./commands/people.js";
 import { registerBatchCommands } from "./commands/batch.js";
@@ -22,6 +23,7 @@ function buildProgram(): Command {
     .option("--quiet", "suppress progress output")
     .showHelpAfterError();
 
+  registerAuthCommands(program);
   registerAccountCommands(program);
   registerPeopleCommands(program);
   registerBatchCommands(program);

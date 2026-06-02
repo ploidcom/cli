@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 export const DEFAULT_BASE_URL = "https://api.ploid.com";
 
@@ -19,7 +19,8 @@ interface ConfigOverrides {
   baseUrl?: string;
 }
 
-function configPath(): string {
+/** Absolute path to the CLI config file (`~/.config/ploid/config.json`). */
+export function configPath(): string {
   const xdg = process.env.XDG_CONFIG_HOME;
   const base = xdg && xdg.trim().length > 0 ? xdg : join(homedir(), ".config");
   return join(base, "ploid", "config.json");
@@ -56,4 +57,35 @@ export function resolveConfig(overrides: ConfigOverrides = {}): ResolvedConfig {
     DEFAULT_BASE_URL
   ).replace(/\/+$/, "");
   return { apiKey, baseUrl };
+}
+
+/**
+ * Persists the API key (and optionally a non-default base URL) to the config
+ * file, merging with any existing values. Written with `0600` permissions so
+ * the secret isn't world-readable.
+ */
+export function saveCredentials(apiKey: string, baseUrl?: string): string {
+  const path = configPath();
+  const existing = readFileConfig();
+  const next: FileConfig = { ...existing, api_key: apiKey };
+  if (baseUrl && baseUrl !== DEFAULT_BASE_URL) {
+    next.base_url = baseUrl.replace(/\/+$/, "");
+  }
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
+  return path;
+}
+
+/**
+ * Removes the stored API key from the config file (used by `ploid logout`).
+ * Returns true if a key was present and removed.
+ */
+export function clearCredentials(): boolean {
+  const path = configPath();
+  const existing = readFileConfig();
+  if (existing.api_key === undefined) return false;
+  delete existing.api_key;
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(existing, null, 2)}\n`, { mode: 0o600 });
+  return true;
 }

@@ -7,14 +7,31 @@ A lightweight command-line client for the [Ploid Public API](https://api.ploid.c
 ```bash
 npm install -g @ploid/cli
 # or run without installing
-npx @ploid/cli auth check
+npx @ploid/cli login
 ```
 
 Requires Node.js 20 or newer.
 
 ## Authentication
 
-Create an API key in your Ploid workspace settings, then provide it in any of these ways (highest precedence first):
+The easiest way to sign in is through the browser — no need to copy an API key by hand:
+
+```bash
+ploid login
+```
+
+This prints a short code, opens your browser to `https://ploid.com/auth/cli`, and waits while you confirm the code and approve the device. Once approved, a freshly minted API key is saved to `~/.config/ploid/config.json` automatically. Use `--no-browser` on headless machines (the URL is printed so you can open it elsewhere).
+
+Browser-login keys are granted the full set of CLI scopes and expire after 90 days — run `ploid login` again to refresh. If you belong to more than one organization, the approval page lets you pick which one the key belongs to.
+
+```bash
+ploid logout      # revoke the key server-side AND remove it from this machine
+ploid auth check  # validate the saved key and print your balance
+```
+
+### Providing a key manually
+
+If you'd rather manage the key yourself (e.g. in CI), provide it in any of these ways (highest precedence first):
 
 1. `--api-key <key>` flag
 2. `PLOID_API_KEY` environment variable
@@ -22,15 +39,13 @@ Create an API key in your Ploid workspace settings, then provide it in any of th
 
 ```json
 {
-  "api_key": "pk_live_...",
+  "api_key": "ploid_live_...",
   "base_url": "https://api.ploid.com"
 }
 ```
 
-Verify it works:
-
 ```bash
-export PLOID_API_KEY=pk_live_...
+export PLOID_API_KEY=ploid_live_...
 ploid auth check
 ```
 
@@ -65,6 +80,8 @@ Exit codes: `0` success, `1` usage/input error, `2` API error, `3` missing auth/
 ### Account
 
 ```bash
+ploid login                # sign in via the browser and save a key
+ploid logout               # remove the saved key
 ploid account credits      # balance + API key budget
 ploid account usage        # usage context
 ploid auth check           # validate the key and print the balance
