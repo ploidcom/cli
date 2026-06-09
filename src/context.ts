@@ -9,6 +9,8 @@ export interface GlobalOptions {
   baseUrl?: string;
   json?: boolean;
   quiet?: boolean;
+  /** Per-request timeout in seconds (from --timeout). */
+  timeout?: number;
 }
 
 export interface CommandContext {
@@ -39,8 +41,12 @@ export function buildContext(command: Command): CommandContext {
       3,
     );
   }
+  const timeoutMs =
+    opts.timeout !== undefined && Number.isFinite(opts.timeout)
+      ? Math.max(0, opts.timeout) * 1000
+      : undefined;
   return {
-    client: new ApiClient({ apiKey: config.apiKey, baseUrl: config.baseUrl }),
+    client: new ApiClient({ apiKey: config.apiKey, baseUrl: config.baseUrl, timeoutMs }),
     output: { json: Boolean(opts.json), quiet: Boolean(opts.quiet) },
     baseUrl: config.baseUrl,
   };

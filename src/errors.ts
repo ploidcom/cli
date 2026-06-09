@@ -45,6 +45,11 @@ const HINTS: Record<string, string> = {
   monthly_budget_exceeded: "This API key hit its monthly budget. Raise it in workspace settings.",
   max_cost_exceeded: "Estimated job cost exceeds --max-cost-usd. Raise the limit or trim the input.",
   rate_limited: "Rate limit reached. Wait a moment and retry.",
+  request_timeout: "The request took too long. For natural-language or large searches use the async flow: `ploid searches create --query \"...\" --count 25 --wait`. Raise --timeout for slow one-off calls.",
+  gateway_timeout: "The server held the connection too long. For natural-language or large searches use the async flow: `ploid searches create --query \"...\" --count 25 --wait`.",
+  bad_gateway: "The API gateway hit an error. Retry shortly; for long searches prefer `ploid searches create --wait`.",
+  service_unavailable: "The API is temporarily unavailable. Retry in a moment.",
+  network_error: "Could not reach the API. Check your connection and --base-url.",
 };
 
 /** Builds a human-readable, multi-line message for an API error. */

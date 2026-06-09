@@ -1,7 +1,8 @@
 import { Command } from "commander";
 import { buildContext } from "../context.js";
+import { CliError } from "../errors.js";
 import { readJsonObject, splitList } from "../input.js";
-import { printResult } from "../output.js";
+import { printResult, progress } from "../output.js";
 
 export function registerPeopleCommands(program: Command): void {
   const people = program.command("people").description("Search, look up, and enrich people");
@@ -11,10 +12,21 @@ export function registerPeopleCommands(program: Command): void {
     .description("Search people (POST /v1/people/search)")
     .requiredOption("--query <text>", "natural-language or keyword query")
     .option("--mode <mode>", "search mode: table or natural", "table")
-    .option("--size <n>", "number of results", (v) => Number.parseInt(v, 10))
+    .option("--size <n>", "number of results (natural mode requires 25-1000)", (v) => Number.parseInt(v, 10))
     .option("--filters <path>", "JSON file (or - for stdin) with structured filters")
     .action(async (opts, command: Command) => {
       const ctx = buildContext(command);
+      if (opts.mode === "natural" && (opts.size === undefined || opts.size < 25 || opts.size > 1000)) {
+        throw new CliError("Natural search requires --size between 25 and 1000.");
+      }
+      // Natural/deep search holds the connection open and can exceed gateway
+      // limits. Nudge users toward the durable async flow for big jobs.
+      if (opts.mode === "natural") {
+        progress(
+          "Tip: natural search runs synchronously and may be slow. For large or production jobs use `ploid searches create --wait`.",
+          ctx.output,
+        );
+      }
       const body: Record<string, unknown> = { query: opts.query, mode: opts.mode };
       if (opts.size !== undefined) body.page = { size: opts.size };
       if (opts.filters) body.filters = readJsonObject(opts.filters);
@@ -56,24 +68,6 @@ export function registerPeopleCommands(program: Command): void {
       if (opts.linkedinUrl) body.linkedin_url = opts.linkedinUrl;
       if (opts.email) body.email = opts.email;
       const res = await ctx.client.post("/people/enrich", { body });
-      printResult(res, ctx.output);
-    });
-
-  people
-    .command("agent")
-    .description("Resolve and enrich one person with the People Agent (POST /v1/people/agent)")
-    .option("--query <text>", "natural-language query")
-    .option("--name <name>", "person's full name")
-    .option("--company <company>", "company name")
-    .option("--linkedin-url <url>", "known LinkedIn URL")
-    .action(async (opts, command: Command) => {
-      const ctx = buildContext(command);
-      const body: Record<string, unknown> = {};
-      if (opts.query) body.query = opts.query;
-      if (opts.name) body.name = opts.name;
-      if (opts.company) body.company = opts.company;
-      if (opts.linkedinUrl) body.linkedin_url = opts.linkedinUrl;
-      const res = await ctx.client.post("/people/agent", { body });
       printResult(res, ctx.output);
     });
 }

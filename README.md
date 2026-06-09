@@ -72,6 +72,7 @@ ploid batch create --file ./people.json --fields linkedin,github,work_email \
 | `--base-url <url>` | API base URL (default `https://api.ploid.com`) |
 | `--json` | Emit raw JSON (the `data` payload) instead of formatted output |
 | `--quiet` | Suppress progress lines (printed to stderr) |
+| `--timeout <seconds>` | Per-request timeout (default `90`, `0` disables). Long sync searches that exceed this fail fast with a hint to use the async flow. |
 
 Exit codes: `0` success, `1` usage/input error, `2` API error, `3` missing auth/config.
 
@@ -93,10 +94,11 @@ ploid auth check           # validate the key and print the balance
 ploid people search --query "founders in SF building AI sales tools" --mode natural --size 50
 ploid people lookup --name "Jane Doe" --company "Acme"
 ploid people enrich --name "Jane Doe" --company "Acme" --fields work_email,github,x
-ploid people agent --query "the CTO of Ploid"
 ```
 
 `--filters` accepts a JSON file (or `-` for stdin) with structured search filters.
+
+`people search --mode natural` runs an AI deep search synchronously and requires `--size` between 25 and 1000. Because it holds the HTTP connection open it can be slow; for large or production searches prefer the async [Searches](#searches-async-people-sets) flow (`ploid searches create --wait`), which is durable and pollable.
 
 ### Batch enrichment
 
@@ -150,15 +152,15 @@ ploid webhooks create --url https://example.com/hook --events batch.completed,pe
 ploid webhooks delete webhook_abc123
 ```
 
-### LinkedIn passthrough
+### LinkedIn
 
 ```bash
-ploid linkedin catalog                                  # endpoints + per-call pricing
-ploid linkedin call profile url=https://www.linkedin.com/in/example
-ploid linkedin call profiles-search search="VP Engineering" locations="United States"
+ploid linkedin profile --url https://www.linkedin.com/in/example
+ploid linkedin search --title "VP Engineering" --location "United States" --limit 25
+ploid linkedin posts --identifier https://www.linkedin.com/in/example --limit 10
 ```
 
-Parameters are passed as `key=value` pairs and forwarded as query parameters.
+`linkedin search` accepts `--keywords`, `--location`, `--title`, `--company`, and `--school` (list flags are comma-separated), plus `--limit` and `--cursor` for pagination. Pass `--filters <path>` to supply the full filters object as JSON instead.
 
 ### Meta
 
