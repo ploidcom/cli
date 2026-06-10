@@ -21,6 +21,11 @@ function buildProgram(): Command {
     .option("--base-url <url>", "API base URL (default https://api.ploid.com)")
     .option("--json", "emit machine-readable JSON instead of tables")
     .option("--quiet", "suppress progress output")
+    .option(
+      "--timeout <seconds>",
+      "per-request timeout in seconds (0 disables; default 90)",
+      (v) => Number.parseInt(v, 10),
+    )
     .showHelpAfterError();
 
   registerAuthCommands(program);

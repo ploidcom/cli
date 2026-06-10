@@ -99,5 +99,79 @@ describe("ApiClient", () => {
     const err = await client.get("/foo").catch((e) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect((err as ApiError).status).toBe(502);
+    expect((err as ApiError).code).toBe("bad_gateway");
+  });
+
+  it("maps a bare 524 gateway response to a gateway_timeout code", async () => {
+    const fetchImpl = vi.fn(
+      async () => new Response("error code: 524", { status: 524 }),
+    ) as unknown as typeof fetch;
+    const client = new ApiClient({ apiKey: "k", baseUrl: "https://example.test", fetchImpl });
+
+    const err = await client.get("/people/search").catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(524);
+    expect((err as ApiError).code).toBe("gateway_timeout");
+  });
+
+  it("aborts with request_timeout when the client timeout elapses", async () => {
+    const client = new ApiClient({
+      apiKey: "k",
+      baseUrl: "https://example.test",
+      fetchImpl: hangingFetch(),
+      timeoutMs: 20,
+    });
+
+    const err = await client.post("/people/lookup", { body: { name: "Jane" } }).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(504);
+    expect((err as ApiError).code).toBe("request_timeout");
+  });
+
+  it("re-throws a user-initiated abort without wrapping it in ApiError", async () => {
+    const controller = new AbortController();
+    const client = new ApiClient({
+      apiKey: "k",
+      baseUrl: "https://example.test",
+      fetchImpl: hangingFetch(),
+      timeoutMs: 0,
+    });
+
+    const promise = client.get("/slow", { signal: controller.signal });
+    controller.abort();
+    const err = await promise.catch((e) => e);
+    expect(err).not.toBeInstanceOf(ApiError);
+    expect((err as Error).name).toBe("AbortError");
+  });
+
+  it("does not time out a fast request when a timeout is configured", async () => {
+    const { fetchImpl } = mockFetch({ body: { data: { ok: true } } });
+    const client = new ApiClient({
+      apiKey: "k",
+      baseUrl: "https://example.test",
+      fetchImpl,
+      timeoutMs: 1000,
+    });
+
+    const res = await client.get<{ ok: boolean }>("/account/credits");
+    expect(res.data).toEqual({ ok: true });
   });
 });
+
+function abortError(): Error {
+  const err = new Error("The operation was aborted.");
+  err.name = "AbortError";
+  return err;
+}
+
+/** A fetch that never resolves on its own — it only rejects when aborted. */
+function hangingFetch(): typeof fetch {
+  return vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+    return new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal;
+      if (!signal) return;
+      if (signal.aborted) return reject(abortError());
+      signal.addEventListener("abort", () => reject(abortError()), { once: true });
+    });
+  }) as unknown as typeof fetch;
+}
