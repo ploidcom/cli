@@ -10,14 +10,6 @@ curl -fsSL https://ploid.com/install | bash
 
 Requires Node.js 20 or newer.
 
-If you prefer npm, you can install the package once it is published:
-
-```bash
-npm install -g @ploid/cli
-# or run without installing
-npx @ploid/cli login
-```
-
 ## Authentication
 
 The easiest way to sign in is through the browser — no need to copy an API key by hand:
