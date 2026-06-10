@@ -5,12 +5,18 @@ A lightweight command-line client for the [Ploid Public API](https://api.ploid.c
 ## Install
 
 ```bash
+curl -fsSL https://ploid.com/install | bash
+```
+
+Requires Node.js 20 or newer.
+
+If you prefer npm, you can install the package once it is published:
+
+```bash
 npm install -g @ploid/cli
 # or run without installing
 npx @ploid/cli login
 ```
-
-Requires Node.js 20 or newer.
 
 ## Authentication
 
